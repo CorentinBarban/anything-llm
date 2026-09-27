@@ -1,6 +1,6 @@
 # anythingllm
 
-![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.85.0](https://img.shields.io/badge/AppVersion-1.85.0-informational?style=flat-square)
+![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.85.0](https://img.shields.io/badge/AppVersion-1.85.0-informational?style=flat-square)
 
 ![AnythingLLM](https://raw.githubusercontent.com/Mintplex-Labs/anything-llm/master/images/wordmark.png)
 
@@ -82,6 +82,40 @@ Install with:
 helm install my-anythingllm ./anythingllm -f values-secret.yaml
 ```
 
+**Active Directory (LDAP) authentication**
+
+Active Directory login requires multi-user mode. See `server/.env.example` for all `LDAP_*` keys.
+
+1) Create a Secret for the bind password and, for LDAPS with a private certificate authority, one for its certificate (PEM):
+
+```
+kubectl create secret generic anythingllm-ldap --from-literal=LDAP_BIND_PASSWORD="..."
+kubectl create secret generic anythingllm-ldap-ca --from-file=ca.crt=corp-root-ca.pem
+```
+
+2) Put the non-secret keys in `config`, the password in `envFrom` and enable `ldap.caCert`:
+
+```yaml
+config:
+  LDAP_ENABLED: "1"
+  LDAP_URL: "ldaps://dc01.corp.local:636,ldaps://dc02.corp.local:636"
+  LDAP_BIND_DN: "CN=svc-anythingllm,OU=Services,DC=corp,DC=local"
+  LDAP_BASE_DN: "DC=corp,DC=local"
+  LDAP_ADMIN_GROUP_DN: "CN=GG-AnythingLLM-Admins,OU=Groups,DC=corp,DC=local"
+  LDAP_ALLOW_LOCAL_LOGIN: "1"
+
+envFrom:
+  - secretRef:
+      name: anythingllm-ldap
+
+ldap:
+  caCert:
+    enabled: true
+    secretName: anythingllm-ldap-ca
+```
+
+The certificate is mounted read-only in `ldap.caCert.mountPath` and `LDAP_TLS_CA_PATH` is set for you. Use `ldap.caCert.configMapName` instead of `secretName` if the certificate is stored in a `ConfigMap`. The pod must be able to resolve and reach the domain controllers (port `636` for LDAPS, `389` for StartTLS).
+
 **Best practices & tips**
 
 - Use `envFrom` for convenience when many environment variables are stored in a single `Secret` and use `env`/`valueFrom` for explicit single-key mappings.
@@ -115,6 +149,11 @@ helm install my-anythingllm ./anythingllm -f values-secret.yaml
 | ingress.hosts[0].paths[0].pathType | string | `"ImplementationSpecific"`   |             |
 | ingress.tls                        | list   | `[]`                         |             |
 | initContainers                     | list   | `[]`                         |             |
+| ldap.caCert.configMapName          | string | `""`                         |             |
+| ldap.caCert.enabled                | bool   | `false`                      |             |
+| ldap.caCert.key                    | string | `"ca.crt"`                   |             |
+| ldap.caCert.mountPath              | string | `"/app/ldap-certs"`          |             |
+| ldap.caCert.secretName             | string | `""`                         |             |
 | livenessProbe.failureThreshold     | int    | `3`                          |             |
 | livenessProbe.httpGet.path         | string | `"/v1/api/health"`           |             |
 | livenessProbe.httpGet.port         | int    | `8888`                       |             |

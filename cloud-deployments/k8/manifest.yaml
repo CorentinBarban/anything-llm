@@ -158,13 +158,41 @@ spec:
             value: "1000"
           - name: GID
             value: "1000"
+          # Active Directory (LDAP) authentication - requires multi-user mode.
+          # See server/.env.example for all LDAP_* keys.
+          # - name: LDAP_ENABLED
+          #   value: "1"
+          # - name: LDAP_URL
+          #   value: "ldaps://dc01.corp.local:636"
+          # - name: LDAP_BIND_DN
+          #   value: "CN=svc-anythingllm,OU=Services,DC=corp,DC=local"
+          # - name: LDAP_BIND_PASSWORD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       # kubectl create secret generic anything-llm-ldap --from-literal=bind-password="..."
+          #       name: anything-llm-ldap
+          #       key: bind-password
+          # - name: LDAP_BASE_DN
+          #   value: "DC=corp,DC=local"
+          # - name: LDAP_ALLOW_LOCAL_LOGIN
+          #   value: "1"
+          # - name: LDAP_TLS_CA_PATH
+          #   value: "/ldap-certs/ca.crt"
         volumeMounts: 
           - name: anything-llm-server-storage-volume-mount
             mountPath: /storage                                                                                                                                                  
+          # Certificate authority of the domain controllers, for LDAPS
+          # - name: anything-llm-ldap-ca
+          #   mountPath: /ldap-certs
+          #   readOnly: true
       volumes:
         - name: anything-llm-server-storage-volume-mount
           persistentVolumeClaim:
             claimName: anything-llm-volume-claim
+        # kubectl create secret generic anything-llm-ldap-ca --from-file=ca.crt=corp-root-ca.pem
+        # - name: anything-llm-ldap-ca
+        #   secret:
+        #     secretName: anything-llm-ldap-ca
 ---
 # This serves the UI and the backend.
 apiVersion: networking.k8s.io/v1

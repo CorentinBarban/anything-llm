@@ -138,6 +138,26 @@ envFrom: {}
   # - secretRef:
   #     name: mysecret
 
+# Active Directory (LDAP) authentication - requires multi-user mode.
+# Put the non-secret LDAP_* keys (LDAP_ENABLED, LDAP_URL, LDAP_BIND_DN, LDAP_BASE_DN...) in `config`
+# and LDAP_BIND_PASSWORD in a Secret referenced from `env` or `envFrom`.
+# See server/.env.example for all LDAP_* keys.
+#
+ldap:
+  # Certificate authority (PEM) of the domain controllers, for LDAPS or StartTLS.
+  # When enabled, it is mounted read-only and LDAP_TLS_CA_PATH is set to <mountPath>/<key>.
+  caCert:
+    enabled: false
+    # Name of an existing Secret holding the certificate
+    # eg: kubectl create secret generic ldap-ca --from-file=ca.crt=corp-root-ca.pem
+    secretName: ""
+    # Name of an existing ConfigMap holding the certificate, used when secretName is empty
+    configMapName: ""
+    # Key of the certificate in the Secret or ConfigMap
+    key: ca.crt
+    # Directory the certificate is mounted in
+    mountPath: /app/ldap-certs
+
 service:
   type: ClusterIP
   port: 3001

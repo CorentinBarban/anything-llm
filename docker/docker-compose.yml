@@ -20,6 +20,9 @@ services:
       - "../server/storage:/app/server/storage"
       - "../collector/hotdir/:/app/collector/hotdir"
       - "../collector/outputs/:/app/collector/outputs"
+      # Active Directory (LDAPS) certificate authority - or place it in ../server/storage/certs
+      # and set LDAP_TLS_CA_PATH="/app/server/storage/certs/corp-root-ca.pem"
+      # - "/path/to/corp-root-ca.pem:/app/ldap-certs/corp-root-ca.pem:ro"
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "3001:3001"

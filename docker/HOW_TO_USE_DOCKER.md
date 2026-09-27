@@ -147,6 +147,31 @@ container rebuilds or pulls from Docker Hub.
 
 - The UID and GID are set to 1000 by default. This is the default user in the Docker container and on most host operating systems. If there is a mismatch between your host user UID and GID and what is set in the `.env` file, you may experience permission issues.
 
+## Active Directory (LDAP) authentication
+
+Active Directory login requires multi-user mode and is configured with the `LDAP_*` keys of the `.env` file (see `docker/.env.example`).
+
+When your domain controllers use LDAPS with a certificate issued by a private certificate authority, the container must be given that authority's certificate (PEM format):
+
+- **Simplest:** copy it into the storage folder that is already mounted, then point `LDAP_TLS_CA_PATH` at its path _inside_ the container.
+
+```shell
+mkdir -p $STORAGE_LOCATION/certs
+cp corp-root-ca.pem $STORAGE_LOCATION/certs/
+# in $STORAGE_LOCATION/.env
+LDAP_TLS_CA_PATH="/app/server/storage/certs/corp-root-ca.pem"
+```
+
+- **Or** mount the file read-only with an extra volume and use that path instead:
+
+```shell
+-v /path/to/corp-root-ca.pem:/app/ldap-certs/corp-root-ca.pem:ro
+# in .env
+LDAP_TLS_CA_PATH="/app/ldap-certs/corp-root-ca.pem"
+```
+
+The file must be readable by the container user (UID/GID `1000` by default). The container must also be able to resolve and reach the domain controllers in `LDAP_URL` (port `636` for LDAPS, `389` for StartTLS). If your AD DNS is not used by Docker, add `--dns <dc-ip>` to `docker run`, or use `dns:` in `docker-compose.yml`.
+
 ## Build locally from source _not recommended for casual use_
 
 - `git clone` this repo and `cd anything-llm` to get to the root directory.

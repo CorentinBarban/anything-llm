@@ -42,9 +42,15 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.env }}
+          {{- if or .Values.env .Values.ldap.caCert.enabled }}
           env:
+            {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.ldap.caCert.enabled }}
+            - name: LDAP_TLS_CA_PATH
+              value: {{ printf "%s/%s" .Values.ldap.caCert.mountPath .Values.ldap.caCert.key | quote }}
+            {{- end }}
           {{- end }}
           envFrom:
             - configMapRef:
@@ -65,10 +71,36 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: {{ .Values.persistentVolume.mountPath }}
+            {{- if .Values.ldap.caCert.enabled }}
+            - name: ldap-ca
+              mountPath: {{ .Values.ldap.caCert.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: storage
           persistentVolumeClaim:
             claimName: {{ include "anythingllm.fullname" . }}-storage-claim
+        {{- with .Values.ldap.caCert }}
+        {{- if .enabled }}
+        - name: ldap-ca
+          {{- if .secretName }}
+          secret:
+            secretName: {{ .secretName }}
+          {{- else }}
+          configMap:
+            name: {{ required "ldap.caCert.secretName or ldap.caCert.configMapName is required when ldap.caCert.enabled is true" .configMapName }}
+          {{- end }}
+            items:
+              - key: {{ .key }}
+                path: {{ .key }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
