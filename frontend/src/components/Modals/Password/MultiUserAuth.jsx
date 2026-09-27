@@ -9,6 +9,7 @@ import RecoveryCodeModal from "@/components/Modals/DisplayRecoveryCodeModal";
 import { useTranslation } from "react-i18next";
 import { t } from "i18next";
 import PasswordInput from "@/components/lib/PasswordInput";
+import useLdapAuth from "@/hooks/useLdapAuth";
 
 const RecoveryForm = ({ onSubmit, setShowRecoveryForm }) => {
   const [username, setUsername] = useState("");
@@ -182,6 +183,7 @@ export default function MultiUserAuth() {
   const [showRecoveryForm, setShowRecoveryForm] = useState(false);
   const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
   const [customAppName, setCustomAppName] = useState(null);
+  const { ldapConfig } = useLdapAuth();
 
   const {
     isOpen: isRecoveryCodeModalOpen,
@@ -306,7 +308,9 @@ export default function MultiUserAuth() {
           <div className="w-full flex flex-col gap-y-3">
             <div className="w-full flex flex-col gap-y-2">
               <label className="text-zinc-300 light:text-slate-800 text-sm">
-                {t("login.multi-user.placeholder-username")}
+                {ldapConfig.enabled
+                  ? ldapConfig.loginLabel || t("login.ldap.username")
+                  : t("login.multi-user.placeholder-username")}
               </label>
               <input
                 name="username"
@@ -329,6 +333,11 @@ export default function MultiUserAuth() {
               />
             </div>
             {error && <p className="text-red-400 text-sm">Error: {error}</p>}
+            {ldapConfig.enabled && (
+              <p className="text-zinc-400 light:text-zinc-600 text-xs w-[300px]">
+                {t("login.ldap.hint")}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center px-12 mt-9 space-x-2 w-full flex-col gap-y-6">
@@ -341,16 +350,18 @@ export default function MultiUserAuth() {
               ? t("login.multi-user.validating")
               : t("login.multi-user.login")}
           </button>
-          <button
-            type="button"
-            className="text-zinc-200 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-sm flex gap-x-1"
-            onClick={handleResetPassword}
-          >
-            {t("login.multi-user.forgot-pass")}?
-            <b className="font-semibold text-sky-300 light:text-sky-600">
-              {t("login.multi-user.reset")}
-            </b>
-          </button>
+          {!ldapConfig.enabled && (
+            <button
+              type="button"
+              className="text-zinc-200 light:text-zinc-600 hover:text-sky-300 light:hover:text-sky-600 hover:underline text-sm flex gap-x-1"
+              onClick={handleResetPassword}
+            >
+              {t("login.multi-user.forgot-pass")}?
+              <b className="font-semibold text-sky-300 light:text-sky-600">
+                {t("login.multi-user.reset")}
+              </b>
+            </button>
+          )}
         </div>
       </form>
 

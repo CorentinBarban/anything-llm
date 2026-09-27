@@ -12,9 +12,11 @@ import { useModal } from "@/hooks/useModal";
 import Modal from "@/components/lib/Modal";
 import CTAButton from "@/components/lib/CTAButton";
 import Toggle from "@/components/lib/Toggle";
+import useLdapAuth from "@/hooks/useLdapAuth";
 
 export default function AdminUsers() {
   const { isOpen, openModal, closeModal } = useModal();
+  const { ldapConfig } = useLdapAuth();
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-theme-bg-container flex">
@@ -45,18 +47,21 @@ export default function AdminUsers() {
             </CTAButton>
           </div>
           <div className="overflow-x-auto">
-            <UsersContainer />
+            <UsersContainer ldapConfig={ldapConfig} />
           </div>
         </div>
         <Modal isOpen={isOpen} onClose={closeModal}>
-          <NewUserModal closeModal={closeModal} />
+          <NewUserModal
+            closeModal={closeModal}
+            ldapEnabled={ldapConfig.enabled}
+          />
         </Modal>
       </div>
     </div>
   );
 }
 
-function UsersContainer() {
+function UsersContainer({ ldapConfig }) {
   const { user: currUser } = useUser();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
@@ -104,7 +109,12 @@ function UsersContainer() {
       </thead>
       <tbody>
         {users.map((user) => (
-          <UserRow key={user.id} currUser={currUser} user={user} />
+          <UserRow
+            key={user.id}
+            currUser={currUser}
+            user={user}
+            ldapConfig={ldapConfig}
+          />
         ))}
       </tbody>
     </table>

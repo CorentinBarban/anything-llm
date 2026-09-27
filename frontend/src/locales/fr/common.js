@@ -115,6 +115,10 @@ const TRANSLATIONS = {
     "image-generation": "Génération d'images",
   },
   login: {
+    ldap: {
+      username: "Identifiant Windows",
+      hint: "Utilisez votre identifiant et votre mot de passe Windows.",
+    },
     "multi-user": {
       welcome: "Bienvenue",
       "placeholder-username": "Nom d'utilisateur",
@@ -1340,7 +1344,21 @@ const TRANSLATIONS = {
       confirm: "Continuer",
     },
   },
+  admin: {
+    users: {
+      ldap_badge: "AD",
+      ldap_badge_tooltip: "Géré par Active Directory",
+      ldap_managed:
+        "Ce compte est géré par Active Directory. Son identifiant et son mot de passe ne peuvent pas être modifiés ici.",
+      ldap_role_synced: "Rôle synchronisé depuis les groupes AD",
+      ldap_auto_provision:
+        "Les utilisateurs AD sont créés automatiquement à leur première connexion.",
+    },
+  },
   profile_settings: {
+    ldap_managed: "Compte géré par Active Directory",
+    ldap_managed_description:
+      "Votre identifiant et votre mot de passe sont gérés par Active Directory et ne peuvent pas être modifiés ici.",
     edit_account: "Modifier le compte",
     profile_picture: "Photo de profil",
     remove_profile_picture: "Supprimer la photo de profil",
@@ -1561,6 +1579,38 @@ const TRANSLATIONS = {
     },
   },
   security: {
+    ldap: {
+      title: "Active Directory",
+      description:
+        "Les utilisateurs peuvent se connecter avec leur compte Active Directory (Windows).",
+      active:
+        "Authentification Active Directory active (configurée via les variables d'environnement).",
+      "requires-multiuser":
+        "Active Directory nécessite le mode multi-utilisateur. Activez-le pour que la connexion AD soit effective.",
+      "test-connection": "Tester la connexion AD",
+      testing: "Test en cours...",
+      "test-user": "Tester un utilisateur",
+      "test-user-placeholder": "Identifiant Windows (facultatif)",
+      "test-user-description":
+        "Facultatif. Recherche l'utilisateur et calcule son rôle sans vérifier son mot de passe.",
+      "connection-success":
+        "Connexion à Active Directory réussie avec le compte de service.",
+      "connection-failed": "Échec de la connexion : {{error}}",
+      "user-not-found": "Utilisateur introuvable ({{reason}}).",
+      "user-authorized":
+        "{{username}} est autorisé à accéder à cette instance.",
+      "user-not-authorized":
+        "{{username}} n'est pas membre du groupe requis et ne peut pas se connecter.",
+      dn: "Nom distinctif (DN)",
+      "display-name": "Nom affiché",
+      groups: "Groupes",
+      "group-required": "Groupe requis",
+      "group-admin": "Groupe administrateurs",
+      "group-manager": "Groupe gestionnaires",
+      member: "membre",
+      "not-member": "non membre",
+      role: "Rôle calculé",
+    },
     title: "Sécurité",
     multiuser: {
       title: "Mode multi-utilisateurs",

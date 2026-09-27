@@ -632,6 +632,12 @@ const SystemSettings = {
       SimpleSSONoLoginRedirect: this.simpleSSO.noLoginRedirect(),
 
       // --------------------------------------------------------
+      // Active Directory (LDAP) Settings
+      // Only flags are exposed - never the directory connection details.
+      // --------------------------------------------------------
+      ...this.ldapSettings(),
+
+      // --------------------------------------------------------
       // Agent Skill Settings
       // --------------------------------------------------------
       AgentSkillMaxToolCalls: AIbitat.defaultMaxToolCalls(),
@@ -749,6 +755,21 @@ const SystemSettings = {
       console.error("FAILED TO UPDATE SYSTEM SETTINGS", error.message);
       return { success: false, error: error.message };
     }
+  },
+
+  ldapSettings: function () {
+    const {
+      isLdapEnabled,
+      ldapAllowLocalLogin,
+      ldapRoleSyncEnabled,
+      ldapLoginLabel,
+    } = require("../utils/auth/ldap");
+    return {
+      LdapEnabled: isLdapEnabled(),
+      LdapLoginLabel: ldapLoginLabel(),
+      LdapAllowLocalLogin: ldapAllowLocalLogin(),
+      LdapRoleSyncEnabled: ldapRoleSyncEnabled(),
+    };
   },
 
   isMultiUserMode: async function () {

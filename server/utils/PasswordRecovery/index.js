@@ -33,6 +33,9 @@ async function generateRecoveryCodes(userId) {
 async function recoverAccount(username = "", recoveryCodes = []) {
   const user = await User.get({ username: String(username) });
   if (!user) return { success: false, error: "Invalid recovery codes." };
+  // Directory users manage their password in Active Directory.
+  if (user.auth_provider !== "local")
+    return { success: false, error: "Invalid recovery codes." };
 
   // If hashes do not exist for a user
   // because this is a user who has not logged out and back in since upgrade.

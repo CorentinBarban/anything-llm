@@ -31,6 +31,11 @@ const {
 const {
   workspaceDeletionProtection,
 } = require("../utils/middleware/workspaceDeletionProtection");
+const {
+  isLdapEnabled,
+  testConnection: testLdapConnection,
+  lookupUser: lookupLdapUser,
+} = require("../utils/auth/ldap");
 
 function adminEndpoints(app) {
   if (!app) return;
@@ -555,6 +560,58 @@ function adminEndpoints(app) {
           response?.locals?.user?.id
         );
         return response.status(200).end();
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // Diagnostic for the Active Directory (LDAP) configuration.
+  // Without a username, only checks the connection and service account.
+  // With a username, also resolves the account, its groups and computed role (no user bind).
+  app.post(
+    "/admin/ldap/test",
+    [validatedRequest, strictMultiUserRoleValid([ROLES.admin])],
+    async (request, response) => {
+      try {
+        if (!isLdapEnabled()) {
+          response.status(200).json({
+            success: false,
+            error: "Active Directory authentication is not enabled.",
+          });
+          return;
+        }
+
+        const { username = null } = reqBody(request) || {};
+        const connection = await testLdapConnection();
+        if (!connection.success || !username) {
+          response.status(200).json(connection);
+          return;
+        }
+
+        try {
+          const profile = await lookupLdapUser(username);
+          response.status(200).json({
+            success: true,
+            error: null,
+            user: {
+              found: true,
+              dn: profile.dn,
+              username: profile.username,
+              displayName: profile.displayName,
+              groups: profile.groups,
+              authorized: profile.authorized,
+              computedRole: profile.role,
+            },
+          });
+        } catch (e) {
+          response.status(200).json({
+            success: true,
+            error: null,
+            user: { found: false, reason: e.reason || e.message },
+          });
+        }
       } catch (e) {
         console.error(e);
         response.sendStatus(500).end();

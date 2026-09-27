@@ -50,6 +50,15 @@ class BackgroundService {
     },
   ];
 
+  #ldapJobs = [
+    // Suspends users disabled or removed from the required group in Active Directory.
+    {
+      name: "sync-ldap-users",
+      timeout: "5m",
+      interval: process.env.LDAP_SYNC_INTERVAL || "1hr",
+    },
+  ];
+
   #documentSyncJobs = [
     // Job for auto-sync of documents
     // https://github.com/breejs/bree
@@ -166,6 +175,8 @@ class BackgroundService {
     const activeJobs = [...this.#alwaysRunJobs];
     if (this.memoryExtractionEnabled) activeJobs.push(...this.#memoryJobs);
     if (this.documentSyncEnabled) activeJobs.push(...this.#documentSyncJobs);
+    if (require("../auth/ldap").isLdapEnabled())
+      activeJobs.push(...this.#ldapJobs);
     return activeJobs;
   }
 

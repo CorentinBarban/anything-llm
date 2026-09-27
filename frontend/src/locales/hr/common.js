@@ -123,6 +123,10 @@ const TRANSLATIONS = {
     "image-generation": "Generiranje slika",
   },
   login: {
+    ldap: {
+      username: "Windows username",
+      hint: "Use your Windows username and password.",
+    },
     "multi-user": {
       welcome: "Dobrodošli",
       "placeholder-username": "Korisničko ime",
@@ -1271,6 +1275,37 @@ const TRANSLATIONS = {
     },
   },
   security: {
+    ldap: {
+      title: "Active Directory",
+      description:
+        "Users can sign in with their Active Directory (Windows) account.",
+      active:
+        "Active Directory authentication is active (configured via environment variables).",
+      "requires-multiuser":
+        "Active Directory requires Multi-User Mode. Enable Multi-User Mode for AD sign-in to take effect.",
+      "test-connection": "Test AD connection",
+      testing: "Testing...",
+      "test-user": "Test a user",
+      "test-user-placeholder": "Windows username (optional)",
+      "test-user-description":
+        "Optional. Looks up the user and computes their role without checking their password.",
+      "connection-success":
+        "Connected to Active Directory with the service account.",
+      "connection-failed": "Connection failed: {{error}}",
+      "user-not-found": "User not found ({{reason}}).",
+      "user-authorized": "{{username}} is allowed to access this instance.",
+      "user-not-authorized":
+        "{{username}} is not a member of the required group and cannot sign in.",
+      dn: "Distinguished name",
+      "display-name": "Display name",
+      groups: "Groups",
+      "group-required": "Required group",
+      "group-admin": "Admin group",
+      "group-manager": "Manager group",
+      member: "member",
+      "not-member": "not a member",
+      role: "Computed role",
+    },
     title: "Sigurnost",
     multiuser: {
       title: "Način s više korisnika",
@@ -1683,7 +1718,21 @@ const TRANSLATIONS = {
       confirm: "Nastavite",
     },
   },
+  admin: {
+    users: {
+      ldap_badge: "AD",
+      ldap_badge_tooltip: "Managed by Active Directory",
+      ldap_managed:
+        "This account is managed by Active Directory. Its username and password cannot be changed here.",
+      ldap_role_synced: "Role synchronized from AD groups",
+      ldap_auto_provision:
+        "Active Directory users are created automatically on their first login.",
+    },
+  },
   profile_settings: {
+    ldap_managed: "Account managed by Active Directory",
+    ldap_managed_description:
+      "Your username and password are managed by Active Directory and cannot be changed here.",
     edit_account: "Uredi račun",
     profile_picture: "Profilna slika",
     remove_profile_picture: "Ukloni profilnu sliku",

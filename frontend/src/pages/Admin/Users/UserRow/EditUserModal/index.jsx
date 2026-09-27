@@ -3,6 +3,8 @@ import Admin from "@/models/admin";
 import { MessageLimitInput, RoleHintDisplay } from "../..";
 import { AUTH_USER } from "@/utils/constants";
 import { useTranslation } from "react-i18next";
+import { Tooltip } from "react-tooltip";
+import { LockSimple } from "@phosphor-icons/react";
 import {
   USERNAME_MIN_LENGTH,
   USERNAME_MAX_LENGTH,
@@ -19,7 +21,12 @@ import {
   ModalLabel,
 } from "@/components/lib/Modal";
 
-export default function EditUserModal({ currentUser, user, closeModal }) {
+export default function EditUserModal({
+  currentUser,
+  user,
+  closeModal,
+  roleSyncEnabled = false,
+}) {
   const [role, setRole] = useState(user.role);
   const [error, setError] = useState(null);
   const [messageLimit, setMessageLimit] = useState({
@@ -27,6 +34,8 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
     limit: user.dailyMessageLimit || 10,
   });
   const { t } = useTranslation();
+  const isLdapUser = user.auth_provider === "ldap";
+  const roleLocked = isLdapUser && roleSyncEnabled;
 
   const handleUpdate = async (e) => {
     setError(null);
@@ -62,6 +71,11 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
     <form onSubmit={handleUpdate} className="flex flex-col gap-y-5">
       <ModalHeader title={`Edit ${user.username}`} onClose={closeModal} />
       <ModalBody>
+        {isLdapUser && (
+          <p className="text-xs rounded-lg border border-sky-400/30 bg-sky-400/10 light:border-sky-600/30 light:bg-sky-100 p-3 text-sky-200 light:text-sky-800">
+            {t("admin.users.ldap_managed")}
+          </p>
+        )}
         <ModalInput
           label="Username"
           name="username"
@@ -72,18 +86,22 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
           maxLength={USERNAME_MAX_LENGTH}
           pattern={USERNAME_PATTERN}
           required={true}
+          readOnly={isLdapUser}
+          className={isLdapUser ? "opacity-60 cursor-not-allowed" : ""}
           autoComplete="off"
-          hint={t("common.username_requirements")}
+          hint={isLdapUser ? null : t("common.username_requirements")}
         />
-        <ModalInput
-          label="New Password"
-          name="password"
-          type="password"
-          placeholder={`${user.username}'s new password`}
-          autoComplete="off"
-          minLength={8}
-          hint="Password must be at least 8 characters long"
-        />
+        {!isLdapUser && (
+          <ModalInput
+            label="New Password"
+            name="password"
+            type="password"
+            placeholder={`${user.username}'s new password`}
+            autoComplete="off"
+            minLength={8}
+            hint="Password must be at least 8 characters long"
+          />
+        )}
         <ModalTextarea
           label="Bio"
           name="bio"
@@ -93,13 +111,35 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
           rows={3}
         />
         <div className="flex flex-col gap-y-1.5 w-full">
-          <ModalLabel htmlFor="role">Role</ModalLabel>
+          <div className="flex items-center gap-x-1">
+            <ModalLabel htmlFor="role">Role</ModalLabel>
+            {roleLocked && (
+              <>
+                <LockSimple
+                  size={14}
+                  weight="bold"
+                  data-tooltip-id="ldap-role-locked"
+                  data-tooltip-content={t("admin.users.ldap_role_synced")}
+                  className="text-zinc-400 light:text-slate-500 cursor-help"
+                />
+                <Tooltip
+                  id="ldap-role-locked"
+                  place="top"
+                  delayShow={300}
+                  className="allm-tooltip !allm-text-xs"
+                />
+              </>
+            )}
+          </div>
+          {/* A disabled select is not submitted, so keep sending the current role. */}
+          {roleLocked && <input type="hidden" name="role" value={user.role} />}
           <select
-            name="role"
+            name={roleLocked ? undefined : "role"}
             required={true}
+            disabled={roleLocked}
             defaultValue={user.role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full h-[34px] px-3.5 text-sm rounded-lg outline-none bg-zinc-800 border border-zinc-800 text-zinc-100 light:bg-white light:border-slate-300 light:text-slate-900 focus:border-sky-500 light:focus:border-sky-500"
+            className="disabled:opacity-60 disabled:cursor-not-allowed w-full h-[34px] px-3.5 text-sm rounded-lg outline-none bg-zinc-800 border border-zinc-800 text-zinc-100 light:bg-white light:border-slate-300 light:text-slate-900 focus:border-sky-500 light:focus:border-sky-500"
           >
             <option value="default">Default</option>
             <option value="manager">Manager</option>

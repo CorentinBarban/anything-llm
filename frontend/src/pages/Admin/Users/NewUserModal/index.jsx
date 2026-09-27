@@ -19,7 +19,7 @@ import {
   ModalLabel,
 } from "@/components/lib/Modal";
 
-export default function NewUserModal({ closeModal }) {
+export default function NewUserModal({ closeModal, ldapEnabled = false }) {
   const [error, setError] = useState(null);
   const [role, setRole] = useState("default");
   const [messageLimit, setMessageLimit] = useState({
@@ -104,6 +104,11 @@ export default function NewUserModal({ closeModal }) {
           After creating a user they will need to login with their initial login
           to get access.
         </p>
+        {ldapEnabled && (
+          <p className="text-sky-300 light:text-sky-700 text-xs md:text-sm">
+            {t("admin.users.ldap_auto_provision")}
+          </p>
+        )}
       </ModalBody>
       <ModalFooter>
         <ModalSecondaryButton onClick={closeModal} type="button">

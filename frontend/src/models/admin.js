@@ -188,6 +188,29 @@ const Admin = {
       });
   },
 
+  // Active Directory (LDAP)
+  /**
+   * Tests the Active Directory connection and service account.
+   * When a username is given, also resolves that user's DN, groups and computed role.
+   * @param {string|null} username
+   * @returns {Promise<{success: boolean, error: string|null, user?: {found: boolean, dn?: string, username?: string, displayName?: string|null, groups?: {required: boolean, admin: boolean, manager: boolean}, authorized?: boolean, computedRole?: string, reason?: string}}>}
+   */
+  testLdap: async (username = null) => {
+    return await fetch(`${API_BASE}/admin/ldap/test`, {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify(username ? { username } : {}),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || `HTTP ${res.status}`);
+        return res.json();
+      })
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+
   // API Keys
   getApiKeys: async function () {
     return fetch(`${API_BASE}/admin/api-keys`, {

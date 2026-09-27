@@ -71,6 +71,9 @@ const {
   simpleSSOEnabled,
   simpleSSOLoginDisabled,
 } = require("../utils/middleware/simpleSSOEnabled");
+const { isLdapEnabled, ldapAllowLocalLogin } = require("../utils/auth/ldap");
+const { ldapLogin } = require("../utils/auth/ldap/login");
+const { loginRateLimit } = require("../utils/middleware/loginRateLimit");
 const { TemporaryAuthToken } = require("../models/temporaryAuthToken");
 const { SystemPromptVariables } = require("../models/systemPromptVariables");
 const { isReservedCommand } = require("../utils/chats");
@@ -195,7 +198,7 @@ function systemEndpoints(app) {
     }
   );
 
-  app.post("/request-token", async (request, response) => {
+  app.post("/request-token", [loginRateLimit], async (request, response) => {
     try {
       const bcrypt = require("bcryptjs");
 
@@ -213,6 +216,14 @@ function systemEndpoints(app) {
 
         const { username, password } = reqBody(request);
         const existingUser = await User._get({ username: String(username) });
+
+        // Active Directory login, unless this is a local account allowed to bypass it (break-glass admin).
+        if (isLdapEnabled()) {
+          const useLocalLogin =
+            existingUser?.auth_provider === "local" && ldapAllowLocalLogin();
+          if (!useLocalLogin)
+            return await ldapLogin(request, response, { username, password });
+        }
 
         if (!existingUser) {
           await EventLogs.logEvent(
@@ -232,7 +243,11 @@ function systemEndpoints(app) {
           return;
         }
 
-        if (!bcrypt.compareSync(String(password), existingUser.password)) {
+        // Directory users can never log in with a local password.
+        if (
+          existingUser.auth_provider !== "local" ||
+          !bcrypt.compareSync(String(password), existingUser.password)
+        ) {
           await EventLogs.logEvent(
             "failed_login_invalid_password",
             {
@@ -396,6 +411,12 @@ function systemEndpoints(app) {
     [isMultiUserSetup],
     async (request, response) => {
       try {
+        // Password reset is disabled when Active Directory handles authentication.
+        if (isLdapEnabled())
+          return response.status(403).json({
+            success: false,
+            message: "Password reset is disabled when LDAP is enabled.",
+          });
         const { username, recoveryCodes } = reqBody(request);
         const { success, resetToken, error } = await recoverAccount(
           username,
@@ -421,6 +442,12 @@ function systemEndpoints(app) {
     [isMultiUserSetup],
     async (request, response) => {
       try {
+        // Password reset is disabled when Active Directory handles authentication.
+        if (isLdapEnabled())
+          return response.status(403).json({
+            success: false,
+            message: "Password reset is disabled when LDAP is enabled.",
+          });
         const { token, newPassword, confirmPassword } = reqBody(request);
         const { success, message, error } = await resetPassword(
           token,

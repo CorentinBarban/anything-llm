@@ -4,7 +4,7 @@ import System from "@/models/system";
 import Appearance from "@/models/appearance";
 import { AUTH_USER } from "@/utils/constants";
 import showToast from "@/utils/toast";
-import { Info, Plus } from "@phosphor-icons/react";
+import { IdentificationBadge, Info, Plus } from "@phosphor-icons/react";
 import Modal, {
   ModalHeader,
   ModalBody,
@@ -30,6 +30,7 @@ import {
 export default function AccountModal({ user, hideModal }) {
   const { pfp, setPfp } = usePfp();
   const { t } = useTranslation();
+  const isLdapUser = user?.auth_provider === "ldap";
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -131,6 +132,23 @@ export default function AccountModal({ user, hideModal }) {
               )}
             </div>
           </div>
+          {isLdapUser && (
+            <div className="flex items-start gap-x-2 rounded-lg border border-sky-400/30 bg-sky-400/10 light:border-sky-600/30 light:bg-sky-100 p-3">
+              <IdentificationBadge
+                size={20}
+                weight="bold"
+                className="shrink-0 text-sky-300 light:text-sky-700"
+              />
+              <div className="flex flex-col gap-y-0.5">
+                <p className="text-sm font-semibold text-sky-200 light:text-sky-800">
+                  {t("profile_settings.ldap_managed")}
+                </p>
+                <p className="text-xs text-zinc-300 light:text-slate-700">
+                  {t("profile_settings.ldap_managed_description")}
+                </p>
+              </div>
+            </div>
+          )}
           <ModalInput
             label={t("profile_settings.username")}
             name="username"
@@ -141,17 +159,21 @@ export default function AccountModal({ user, hideModal }) {
             pattern={USERNAME_PATTERN}
             defaultValue={user.username}
             required
+            readOnly={isLdapUser}
+            className={isLdapUser ? "opacity-60 cursor-not-allowed" : ""}
             autoComplete="off"
-            hint={t("common.username_requirements")}
+            hint={isLdapUser ? null : t("common.username_requirements")}
           />
-          <ModalInput
-            label={t("profile_settings.new_password")}
-            name="password"
-            type="password"
-            placeholder={`${user.username}'s new password`}
-            minLength={8}
-            hint={t("profile_settings.password_description")}
-          />
+          {!isLdapUser && (
+            <ModalInput
+              label={t("profile_settings.new_password")}
+              name="password"
+              type="password"
+              placeholder={`${user.username}'s new password`}
+              minLength={8}
+              hint={t("profile_settings.password_description")}
+            />
+          )}
           <ModalTextarea
             label="Bio"
             name="bio"

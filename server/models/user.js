@@ -11,6 +11,8 @@ const { EventLogs } = require("./eventLogs");
  * @property {string} role
  * @property {boolean} suspended
  * @property {number|null} dailyMessageLimit
+ * @property {"local"|"ldap"} auth_provider
+ * @property {string|null} external_id
  */
 
 const User = {
@@ -90,6 +92,7 @@ const User = {
     const {
       password: _password,
       web_push_subscription_config: _web_push_subscription_config,
+      external_id: _external_id,
       ...rest
     } = user;
     return { ...rest };
@@ -154,6 +157,111 @@ const User = {
     return changes;
   },
 
+  /**
+   * Returns the first field of the updates that cannot be changed because the
+   * user is managed by Active Directory, or null if the update is allowed.
+   * @param {import("@prisma/client").users} currentUser
+   * @param {Object} updates
+   * @returns {string|null}
+   */
+  ldapLockedChange: function (currentUser, updates = {}) {
+    if (currentUser?.auth_provider !== "ldap") return null;
+    const { ldapRoleSyncEnabled } = require("../utils/auth/ldap");
+    const lockedFields = ["username", "password"];
+    if (ldapRoleSyncEnabled()) lockedFields.push("role");
+
+    return (
+      lockedFields.find((key) => {
+        if (!updates.hasOwnProperty(key)) return false;
+        if (key === "password") return !!updates.password;
+        return String(updates[key]) !== String(currentUser[key]);
+      }) || null
+    );
+  },
+
+  /**
+   * Finds or creates the local user linked to an Active Directory account.
+   * Users are matched by objectGUID (external_id) so username changes in AD are followed.
+   * @param {{externalId: string, username: string, role: string}} profile
+   * @returns {Promise<{user: import("@prisma/client").users, created: boolean}>}
+   * @throws {import("../utils/auth/ldap").LdapAuthError} when the account cannot be linked
+   */
+  upsertFromLdap: async function ({ externalId, username, role = "default" }) {
+    const {
+      LdapAuthError,
+      LDAP_ERROR_REASONS,
+      ldapRoleSyncEnabled,
+      ldapLinkExistingUsers,
+    } = require("../utils/auth/ldap");
+    const bcrypt = require("bcryptjs");
+    const crypto = require("crypto");
+    // LDAP users never log in with a local password, but the column is required.
+    const unusablePassword = () =>
+      bcrypt.hashSync(crypto.randomBytes(48).toString("hex"), 10);
+    const syncedRole = ldapRoleSyncEnabled()
+      ? { role: this.validations.role(role) }
+      : {};
+    const now = new Date();
+
+    const linkedUser = await prisma.users.findUnique({
+      where: { external_id: externalId },
+    });
+    if (linkedUser) {
+      const data = { last_ldap_sync: now, ...syncedRole };
+      if (linkedUser.username !== username) {
+        const conflict = await prisma.users.findFirst({
+          where: { username, NOT: { id: linkedUser.id } },
+        });
+        if (conflict)
+          throw new LdapAuthError(
+            LDAP_ERROR_REASONS.linkRefused,
+            `Cannot rename ${linkedUser.username} to ${username}: username taken`
+          );
+        data.username = username;
+      }
+      const user = await prisma.users.update({
+        where: { id: linkedUser.id },
+        data,
+      });
+      return { user, created: false };
+    }
+
+    const existingUser = await prisma.users.findUnique({ where: { username } });
+    if (existingUser) {
+      if (existingUser.auth_provider !== "local" || !ldapLinkExistingUsers())
+        throw new LdapAuthError(
+          LDAP_ERROR_REASONS.linkRefused,
+          `A ${existingUser.auth_provider} user named ${username} already exists`
+        );
+
+      const user = await prisma.users.update({
+        where: { id: existingUser.id },
+        data: {
+          auth_provider: "ldap",
+          external_id: externalId,
+          password: unusablePassword(),
+          seen_recovery_codes: true,
+          last_ldap_sync: now,
+          ...syncedRole,
+        },
+      });
+      return { user, created: false };
+    }
+
+    const user = await prisma.users.create({
+      data: {
+        username: this.validations.username(username),
+        password: unusablePassword(),
+        role: this.validations.role(role),
+        auth_provider: "ldap",
+        external_id: externalId,
+        seen_recovery_codes: true,
+        last_ldap_sync: now,
+      },
+    });
+    return { user, created: true };
+  },
+
   update: async function (userId, updates = {}) {
     try {
       if (!userId) throw new Error("No user id provided for update");
@@ -168,6 +276,13 @@ const User = {
       if (updates.hasOwnProperty("username")) {
         if (updates.username === currentUser.username) delete updates.username;
       }
+
+      const lockedField = this.ldapLockedChange(currentUser, updates);
+      if (lockedField)
+        return {
+          success: false,
+          error: `The ${lockedField} of this user is managed by Active Directory.`,
+        };
 
       // Removes non-writable fields for generic updates
       // and force-casts to the proper type;

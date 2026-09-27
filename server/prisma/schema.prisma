@@ -71,6 +71,9 @@ model users {
   dailyMessageLimit            Int?
   bio                          String?                       @default("")
   web_push_subscription_config String?
+  auth_provider                String                        @default("local")
+  external_id                  String?                       @unique
+  last_ldap_sync               DateTime?
   workspace_chats              workspace_chats[]
   workspace_users              workspace_users[]
   embed_configs                embed_configs[]

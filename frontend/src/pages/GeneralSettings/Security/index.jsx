@@ -15,6 +15,9 @@ import {
   USERNAME_MAX_LENGTH,
   USERNAME_PATTERN,
 } from "@/utils/username";
+import Admin from "@/models/admin";
+import useLdapAuth from "@/hooks/useLdapAuth";
+import { CheckCircle, Info, Warning, XCircle } from "@phosphor-icons/react";
 
 export default function GeneralSecurity() {
   const { t } = useTranslation();
@@ -31,6 +34,7 @@ export default function GeneralSecurity() {
           </p>
         </div>
         <MultiUserMode />
+        <ActiveDirectory />
         <PasswordProtection />
       </div>
     </div>
@@ -196,6 +200,162 @@ function MultiUserMode() {
         </div>
       </div>
     </form>
+  );
+}
+
+function ActiveDirectory() {
+  const { loading, ldapConfig } = useLdapAuth();
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState(null);
+  const { t } = useTranslation();
+
+  const handleTest = async (e) => {
+    e.preventDefault();
+    setTesting(true);
+    setResult(null);
+    const username = new FormData(e.target).get("ldapTestUsername")?.trim();
+    const testResult = await Admin.testLdap(username || null);
+    setResult(testResult);
+    setTesting(false);
+  };
+
+  if (loading || !ldapConfig.enabled) return null;
+  return (
+    <div className="flex flex-col w-full px-1 md:pl-6 md:pr-[50px]">
+      <div className="w-full flex flex-col gap-y-4 pb-6 border-white light:border-theme-sidebar-border border-b-2 border-opacity-10">
+        <div className="w-full flex flex-col gap-y-1">
+          <p className="text-base font-bold text-white mt-6">
+            {t("security.ldap.title")}
+          </p>
+          <p className="text-xs leading-[18px] font-base text-white text-opacity-60">
+            {t("security.ldap.description")}
+          </p>
+        </div>
+
+        <div className="flex items-start gap-x-2 rounded-lg border border-sky-400/30 bg-sky-400/10 light:border-sky-600/30 light:bg-sky-100 p-3 max-w-[600px]">
+          <Info
+            size={18}
+            weight="bold"
+            className="shrink-0 text-sky-300 light:text-sky-700"
+          />
+          <p className="text-xs text-sky-100 light:text-sky-900">
+            {t("security.ldap.active")}
+          </p>
+        </div>
+
+        {!ldapConfig.multiUserMode ? (
+          <div className="flex items-start gap-x-2 rounded-lg border border-orange-400/30 bg-orange-400/10 light:border-orange-600/30 light:bg-orange-50 p-3 max-w-[600px]">
+            <Warning
+              size={18}
+              weight="bold"
+              className="shrink-0 text-orange-300 light:text-orange-700"
+            />
+            <p className="text-xs text-orange-100 light:text-orange-900">
+              {t("security.ldap.requires-multiuser")}
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleTest} className="flex flex-col gap-y-3 w-80">
+            <div>
+              <label
+                htmlFor="ldapTestUsername"
+                className="text-white text-sm font-semibold block mb-3"
+              >
+                {t("security.ldap.test-user")}
+              </label>
+              <input
+                id="ldapTestUsername"
+                name="ldapTestUsername"
+                type="text"
+                className="border-none bg-theme-settings-input-bg text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 placeholder:text-theme-settings-input-placeholder"
+                placeholder={t("security.ldap.test-user-placeholder")}
+                autoComplete="off"
+              />
+              <p className="text-white text-opacity-60 text-xs mt-2">
+                {t("security.ldap.test-user-description")}
+              </p>
+            </div>
+            <CTAButton disabled={testing}>
+              {testing
+                ? t("security.ldap.testing")
+                : t("security.ldap.test-connection")}
+            </CTAButton>
+          </form>
+        )}
+
+        {result && <LdapTestResult result={result} />}
+      </div>
+    </div>
+  );
+}
+
+function LdapTestResult({ result }) {
+  const { t } = useTranslation();
+  const { success, error, user } = result;
+
+  return (
+    <div className="flex flex-col gap-y-3 max-w-[600px] text-xs text-white">
+      <ResultLine ok={success}>
+        {success
+          ? t("security.ldap.connection-success")
+          : t("security.ldap.connection-failed", { error })}
+      </ResultLine>
+      {success && user && !user.found && (
+        <ResultLine ok={false}>
+          {t("security.ldap.user-not-found", { reason: user.reason })}
+        </ResultLine>
+      )}
+      {success && user?.found && (
+        <>
+          <ResultLine ok={user.authorized}>
+            {user.authorized
+              ? t("security.ldap.user-authorized", { username: user.username })
+              : t("security.ldap.user-not-authorized", {
+                  username: user.username,
+                })}
+          </ResultLine>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-theme-settings-input-bg p-3">
+            <dt className="text-white/60">{t("security.ldap.dn")}</dt>
+            <dd className="font-mono break-all">{user.dn}</dd>
+            {user.displayName && (
+              <>
+                <dt className="text-white/60">
+                  {t("security.ldap.display-name")}
+                </dt>
+                <dd>{user.displayName}</dd>
+              </>
+            )}
+            <dt className="text-white/60">{t("security.ldap.groups")}</dt>
+            <dd className="flex flex-col gap-y-0.5">
+              {["required", "admin", "manager"].map((group) => (
+                <span key={group}>
+                  {t(`security.ldap.group-${group}`)} :{" "}
+                  {user.groups?.[group]
+                    ? t("security.ldap.member")
+                    : t("security.ldap.not-member")}
+                </span>
+              ))}
+            </dd>
+            <dt className="text-white/60">{t("security.ldap.role")}</dt>
+            <dd className="font-semibold">{user.computedRole}</dd>
+          </dl>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ResultLine({ ok, children }) {
+  const Icon = ok ? CheckCircle : XCircle;
+  return (
+    <p className="flex items-center gap-x-2">
+      <Icon
+        size={16}
+        weight="fill"
+        className={ok ? "text-green-400" : "text-red-400"}
+      />
+      {children}
+    </p>
   );
 }
 

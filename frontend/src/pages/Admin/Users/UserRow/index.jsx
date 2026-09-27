@@ -6,6 +6,8 @@ import EditUserModal from "./EditUserModal";
 import showToast from "@/utils/toast";
 import { useModal } from "@/hooks/useModal";
 import Modal from "@/components/lib/Modal";
+import { Tooltip } from "react-tooltip";
+import { useTranslation } from "react-i18next";
 
 const ModMap = {
   admin: ["admin", "manager", "default"],
@@ -13,7 +15,8 @@ const ModMap = {
   default: [],
 };
 
-export default function UserRow({ currUser, user }) {
+export default function UserRow({ currUser, user, ldapConfig }) {
+  const { t } = useTranslation();
   const rowRef = useRef(null);
   const canModify = ModMap[currUser?.role || "default"].includes(user.role);
   const [suspended, setSuspended] = useState(user.suspended === 1);
@@ -61,7 +64,18 @@ export default function UserRow({ currUser, user }) {
         className="bg-transparent text-white text-opacity-80 text-xs font-medium border-b border-white/10 h-10"
       >
         <th scope="row" className="px-6 whitespace-nowrap">
-          {user.username}
+          <div className="flex items-center gap-x-2">
+            {user.username}
+            {user.auth_provider === "ldap" && (
+              <span
+                data-tooltip-id="ldap-user-badge"
+                data-tooltip-content={t("admin.users.ldap_badge_tooltip")}
+                className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold leading-none bg-sky-400/20 text-sky-300 light:bg-sky-100 light:text-sky-700"
+              >
+                {t("admin.users.ldap_badge")}
+              </span>
+            )}
+          </div>
         </th>
         <td className="px-6">{titleCase(user.role)}</td>
         <td className="px-6">{moment(user.createdAt).format("lll")}</td>
@@ -97,8 +111,15 @@ export default function UserRow({ currUser, user }) {
           currentUser={currUser}
           user={user}
           closeModal={closeModal}
+          roleSyncEnabled={!!ldapConfig?.roleSyncEnabled}
         />
       </Modal>
+      <Tooltip
+        id="ldap-user-badge"
+        place="top"
+        delayShow={300}
+        className="allm-tooltip !allm-text-xs"
+      />
     </>
   );
 }
